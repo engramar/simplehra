@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Sample Web App</title>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <style>
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 250px;
+            border: 1px solid #ccc;
+            z-index: 1;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 8px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .dropdown.show .dropdown-content {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <fieldset>
+        <h1 style="text-align: center;">Customer Sample Web App</h1>
+        <img src="loqate.png" alt="Company Logo" style="display: block; margin: 0 auto 50px auto; width: 150px; height: auto;" />
+
+        <label for="Line1">Address</label>
+        <div class="dropdown">
+            <input id="Line1" type="text" placeholder="Start typing your address" autocomplete="off" autofocus oninput="lookupAddress()" />
+            <div id="addressDropdown" class="dropdown-content"></div>
+        </div>
+
+        <label for="City">City</label>
+        <input id="City" type="text" placeholder="City" />
+
+        <label for="Province">State</label>
+        <input id="Province" type="text" placeholder="State/Province" />
+
+        <label for="PostalCode">Zip Code</label>
+        <input id="PostalCode" type="text" placeholder="Zip/Postal Code" />
+
+    </fieldset>
+
+    <script>
+        async function lookupAddress() {
+            const addressInput = document.getElementById('Line1').value;
+            if (addressInput.length < 3) return;
+
+            const username = 'csuser';
+            const password = 'pMaZHhtsHp4TlNa3OWTbsRwOOwIesrmG';
+            const findUrl = 'https://hosted.mastersoftgroup.com/harmony/rest/v2/address/find';
+
+            const payload = {
+                payload: [{ country: "AU", fullAddress: addressInput }],
+                sourceOfTruth: "GNAF",
+                featureOptions: {
+                    exposeAttributes: "1",
+                    singleLineHitNumber: "20",
+                    displayGnafLot: "1",
+                    suppressLot: "1"
+                }
+            };
+
+            try {
+                const response = await fetch(findUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa(username + ':' + password)
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                const dropdown = document.getElementById('addressDropdown');
+                dropdown.innerHTML = '';
+
+                if (data.status === 'SUCCESS' && data.payload.length > 0) {
+                    data.payload.forEach(item => {
+                        const a = document.createElement('a');
+                        a.textContent = item.fullAddress;
+                        a.href = '#';
+                        a.onclick = () => selectAddress(item.id);
+                        dropdown.appendChild(a);
+                    });
+                    dropdown.parentNode.classList.add('show');
+                } else {
+                    dropdown.parentNode.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Error fetching address data:', error);
+            }
+        }
+
+        async function selectAddress(id) {
+            const retrieveUrl = 'https://hosted.mastersoftgroup.com/harmony/rest/v2/address/retrieve';
+            const payload = {
+                payload: [{ id: id }],
+                featureOptions: {
+                    exposeAttributes: "1",
+                    displayGnafLot: "1",
+                    suppressLot: "1"
+                }
+            };
+
+            try {
+                const response = await fetch(retrieveUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa('csuser:pMaZHhtsHp4TlNa3OWTbsRwOOwIesrmG')
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'SUCCESS' && data.payload.length > 0) {
+                    const addressData = data.payload[0];
+                    document.getElementById('Line1').value = `${addressData.streetNumber} ${addressData.street}`;
+                    document.getElementById('City').value = addressData.locality;
+                    document.getElementById('Province').value = addressData.state;
+                    document.getElementById('PostalCode').value = addressData.postcode;
+                }
+
+                document.getElementById('addressDropdown').parentNode.classList.remove('show');
+            } catch (error) {
+                console.error('Error retrieving address data:', error);
+            }
+        }
+
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.dropdown')) {
+                document.getElementById('addressDropdown').parentNode.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+
+</html>
