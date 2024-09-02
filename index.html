@@ -1,159 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
+<link rel="stylesheet" type="text/css" href="https://common.mastersoftgroup.com/scripts/harmony-2.1.0.min.css">
+<script src="https://common.mastersoftgroup.com/scripts/harmony-2.3.0.min.js" type="text/javascript"></script>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Sample Web App</title>
-    <link rel="stylesheet" type="text/css" href="styles.css" />
-    <style>
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
+<fieldset>
+    <label for="Line1">Address Search</label>
+    <div class="dropdown">
+        <input id="Line1" type="text" placeholder="Start typing your address" autocomplete="off" autofocus style="width: 500px; box-sizing: border-box;" />
+        <div id="addressDropdown" class="dropdown-content" style="width: 300px;"></div>
+    </div>
+</fieldset>
 
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: #f9f9f9;
-            min-width: 250px;
-            border: 1px solid #ccc;
-            z-index: 1;
-        }
+<fieldset>
+    <label for="OutputLine1">Full Address</label>
+    <input id="OutputLine1" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-        .dropdown-content a {
-            color: black;
-            padding: 8px 16px;
-            text-decoration: none;
-            display: block;
-        }
+<fieldset>
+    <label for="OutputSubdwelling">Subdwelling</label>
+    <input id="OutputSubdwelling" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-        .dropdown-content a:hover {
-            background-color: #f1f1f1;
-        }
+<fieldset>
+    <label for="OutputStreetAddress">Street</label>
+    <input id="OutputStreetAddress" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-        .dropdown.show .dropdown-content {
-            display: block;
-        }
-    </style>
-</head>
+<fieldset>
+    <label for="OutputLocality">Locality</label>
+    <input id="OutputLocality" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-<body>
-    <fieldset>
-        <h1 style="text-align: center;">Customer Sample Web App</h1>
-        <img src="loqate.png" alt="Company Logo" style="display: block; margin: 0 auto 50px auto; width: 150px; height: auto;" />
+<fieldset>
+    <label for="OutputState">State</label>
+    <input id="OutputState" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-        <label for="Line1">Address</label>
-        <div class="dropdown">
-            <input id="Line1" type="text" placeholder="Start typing your address" autocomplete="off" autofocus oninput="lookupAddress()" />
-            <div id="addressDropdown" class="dropdown-content"></div>
-        </div>
+<fieldset>
+    <label for="OutputPostcode">Postcode</label>
+    <input id="OutputPostcode" type="text" style="width: 500px;" readonly />
+</fieldset>
 
-        <label for="City">City</label>
-        <input id="City" type="text" placeholder="City" />
+<script>
+  function setupAddress(){
+    let al = null;
 
-        <label for="Province">State</label>
-        <input id="Province" type="text" placeholder="State/Province" />
+    Harmony.useEnv('https://hosted.mastersoftgroup.com'); 
+    Harmony.init('csuser', 'pMaZHhtsHp4TlNa3OWTbsRwOOwIesrmG', Harmony.AUSTRALIA);
 
-        <label for="PostalCode">Zip Code</label>
-        <input id="PostalCode" type="text" placeholder="Zip/Postal Code" />
+    var featureOptions = { exposeAttributes: "1"};
+    Harmony.useFeatureOptions(featureOptions);
 
-    </fieldset>
+    var opt = {
+      minLength: 3,
+      hits: 20,
 
-    <script>
-        async function lookupAddress() {
-            const addressInput = document.getElementById('Line1').value;
-            if (addressInput.length < 3) return;
+      onSelect: function (ui) {
+          console.log("address selected: " + JSON.stringify(ui));
+      },
 
-            const username = 'csuser';
-            const password = 'pMaZHhtsHp4TlNa3OWTbsRwOOwIesrmG';
-            const findUrl = 'https://hosted.mastersoftgroup.com/harmony/rest/v2/address/find';
+      onRetrieve: function (ui) {        
+          var addressData = ui.onRetrieveItem;
+          document.getElementById('OutputLine1').value = addressData.fullAddress;
+          document.getElementById('OutputSubdwelling').value = `${addressData.flatUnitType} ${addressData.flatUnitNumber} ${addressData.floorLevelType} ${addressData.floorLevelNumber}`;
+          document.getElementById('OutputStreetAddress').value = `${addressData.streetNumber} ${addressData.street}`;
+          document.getElementById('OutputLocality').value = addressData.locality;
+          document.getElementById('OutputState').value = addressData.state;
+          document.getElementById('OutputPostcode').value = addressData.postcode;        
+      },
+    };
 
-            const payload = {
-                payload: [{ country: "AU", fullAddress: addressInput }],
-                sourceOfTruth: "GNAF",
-                featureOptions: {
-                    exposeAttributes: "1",
-                    singleLineHitNumber: "20",
-                    displayGnafLot: "1",
-                    suppressLot: "1"
-                }
-            };
+    al = HarmonyJS.addressLookup(
+      document.getElementById('Line1'),
+      'AUSTRALIA',
+      'GNAF',
+      opt
+    );
+  }      
 
-            try {
-                const response = await fetch(findUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + btoa(username + ':' + password)
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-                const dropdown = document.getElementById('addressDropdown');
-                dropdown.innerHTML = '';
-
-                if (data.status === 'SUCCESS' && data.payload.length > 0) {
-                    data.payload.forEach(item => {
-                        const a = document.createElement('a');
-                        a.textContent = item.fullAddress;
-                        a.href = '#';
-                        a.onclick = () => selectAddress(item.id);
-                        dropdown.appendChild(a);
-                    });
-                    dropdown.parentNode.classList.add('show');
-                } else {
-                    dropdown.parentNode.classList.remove('show');
-                }
-            } catch (error) {
-                console.error('Error fetching address data:', error);
-            }
-        }
-
-        async function selectAddress(id) {
-            const retrieveUrl = 'https://hosted.mastersoftgroup.com/harmony/rest/v2/address/retrieve';
-            const payload = {
-                payload: [{ id: id }],
-                featureOptions: {
-                    exposeAttributes: "1",
-                    displayGnafLot: "1",
-                    suppressLot: "1"
-                }
-            };
-
-            try {
-                const response = await fetch(retrieveUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + btoa('csuser:pMaZHhtsHp4TlNa3OWTbsRwOOwIesrmG')
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'SUCCESS' && data.payload.length > 0) {
-                    const addressData = data.payload[0];
-                    document.getElementById('Line1').value = `${addressData.streetNumber} ${addressData.street}`;
-                    document.getElementById('City').value = addressData.locality;
-                    document.getElementById('Province').value = addressData.state;
-                    document.getElementById('PostalCode').value = addressData.postcode;
-                }
-
-                document.getElementById('addressDropdown').parentNode.classList.remove('show');
-            } catch (error) {
-                console.error('Error retrieving address data:', error);
-            }
-        }
-
-        document.addEventListener('click', function (event) {
-            if (!event.target.closest('.dropdown')) {
-                document.getElementById('addressDropdown').parentNode.classList.remove('show');
-            }
-        });
-    </script>
-</body>
-
-</html>
+  window.onload = setupAddress;
+</script>
